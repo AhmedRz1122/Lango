@@ -19,11 +19,11 @@ extension TranslationModeExtension on TranslationMode {
   String get description {
     switch (this) {
       case TranslationMode.online:
-        return 'Cloud-powered translation';
+        return 'Google Translate in browser';
       case TranslationMode.offline:
         return 'On-device translation';
       case TranslationMode.auto:
-        return 'Switches based on connectivity';
+        return 'Offline when no internet';
     }
   }
 }

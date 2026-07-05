@@ -8,7 +8,6 @@ class AppConstants {
   static const String taglineHighlight2 = 'everything.';
 
   static const String genkitBaseUrl = 'http://localhost:3400';
-  static const String hyMtServiceUrl = 'http://localhost:3401';
 
   static const String appLogo = 'assets/images/Lango_logo.png';
 

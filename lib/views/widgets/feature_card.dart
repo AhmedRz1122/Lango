@@ -23,61 +23,61 @@ class FeatureCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(32),
-            topRight: const Radius.circular(32),
-            bottomLeft: const Radius.circular(16),
-            bottomRight: const Radius.circular(40),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(40),
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: AppColors.textPrimary, size: 22),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Icon(icon, color: AppColors.textPrimary, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    height: 1.2,
                   ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
             Align(
               alignment: Alignment.bottomRight,
               child: Container(
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 decoration: const BoxDecoration(
                   color: AppColors.textPrimary,
                   shape: BoxShape.circle,
@@ -85,7 +85,7 @@ class FeatureCard extends StatelessWidget {
                 child: const Icon(
                   Icons.arrow_forward_rounded,
                   color: Colors.white,
-                  size: 14,
+                  size: 13,
                 ),
               ),
             ),

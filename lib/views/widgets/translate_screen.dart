@@ -4,14 +4,21 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/translation_mode.dart';
+import '../../viewmodels/app_view_model.dart';
 import '../../viewmodels/translate_view_model.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/voice_input_bar.dart';
 
 class TranslateScreen extends StatefulWidget {
   final bool startVoice;
+  final bool forceOffline;
 
-  const TranslateScreen({super.key, this.startVoice = false});
+  const TranslateScreen({
+    super.key,
+    this.startVoice = false,
+    this.forceOffline = false,
+  });
 
   @override
   State<TranslateScreen> createState() => _TranslateScreenState();
@@ -30,6 +37,13 @@ class _TranslateScreenState extends State<TranslateScreen> {
     if (widget.startVoice) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _vm.showVoiceInputBar();
+      });
+    }
+
+    if (widget.forceOffline) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _vm.setMode(TranslationMode.offline);
+        context.read<AppViewModel>().setTranslationMode(TranslationMode.offline);
       });
     }
   }

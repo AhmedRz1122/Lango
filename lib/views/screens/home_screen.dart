@@ -133,7 +133,7 @@ class HomeScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.05,
+              childAspectRatio: 0.92,
               children: [
                 FeatureCard(
                   title: 'Voice Translator',
@@ -208,7 +208,10 @@ class HomeScreen extends StatelessWidget {
   void _openTranslate(BuildContext context, {bool voice = false}) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TranslateScreen(startVoice: voice),
+        builder: (_) => TranslateScreen(
+          startVoice: voice,
+          forceOffline: true,
+        ),
       ),
     );
   }

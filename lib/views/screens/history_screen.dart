@@ -10,6 +10,64 @@ import '../../viewmodels/translate_view_model.dart';
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
+  Future<void> _confirmClearAll(
+    BuildContext context,
+    TranslateViewModel vm,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Clear History',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to delete all translation history? '
+          'This action cannot be undone.',
+          style: GoogleFonts.poppins(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Clear',
+              style: GoogleFonts.poppins(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await vm.clearHistory();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'History cleared',
+              style: GoogleFonts.poppins(),
+            ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<TranslateViewModel>();
@@ -33,9 +91,7 @@ class HistoryScreen extends StatelessWidget {
                 ),
                 if (history.isNotEmpty)
                   TextButton(
-                    onPressed: () async {
-                      // Clear handled via repository in future
-                    },
+                    onPressed: () => _confirmClearAll(context, vm),
                     child: Text(
                       'Clear',
                       style: GoogleFonts.poppins(
@@ -81,14 +137,29 @@ class HistoryScreen extends StatelessWidget {
                       itemCount: history.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, i) {
+                        final record = history[i];
                         return _HistoryCard(
-                          record: history[i],
-                          onFavorite: () => vm.toggleFavorite(history[i].id),
+                          record: record,
+                          onFavorite: () => vm.toggleFavorite(record.id),
                           onCopy: () {
                             Clipboard.setData(
-                              ClipboardData(text: history[i].translatedText),
+                              ClipboardData(text: record.translatedText),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Copied to clipboard',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                             );
                           },
+                          onDelete: () => vm.deleteTranslation(record.id),
                         );
                       },
                     ),
@@ -104,11 +175,13 @@ class _HistoryCard extends StatelessWidget {
   final TranslationRecord record;
   final VoidCallback onFavorite;
   final VoidCallback onCopy;
+  final VoidCallback onDelete;
 
   const _HistoryCard({
     required this.record,
     required this.onFavorite,
     required this.onCopy,
+    required this.onDelete,
   });
 
   @override
@@ -157,13 +230,27 @@ class _HistoryCard extends StatelessWidget {
               const Spacer(),
               if (record.isOffline)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.softOrange.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Offline',
+                    style: GoogleFonts.poppins(fontSize: 10),
+                  ),
+                )
+              else
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.lavenderLight.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Online',
                     style: GoogleFonts.poppins(fontSize: 10),
                   ),
                 ),
@@ -217,6 +304,14 @@ class _HistoryCard extends StatelessWidget {
                   size: 18,
                 ),
                 color: record.isFavorite ? Colors.red : AppColors.textSecondary,
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                color: AppColors.textSecondary,
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
               ),
