@@ -31,16 +31,21 @@ class TranslationRepository {
     required String text,
     required String from,
     required String to,
-    TranslationMode mode = TranslationMode.auto,
+    TranslationMode mode = TranslationMode.offline,
   }) async {
     final isOnline = await hasConnectivity();
-    final useOffline = mode == TranslationMode.offline ||
+    final preferOffline = mode == TranslationMode.offline ||
         (mode == TranslationMode.auto && !isOnline);
 
-    if (useOffline) {
+    if (preferOffline) {
       return _offlineService.translate(text: text, from: from, to: to);
     }
-    return _onlineService.translate(text: text, from: from, to: to);
+
+    try {
+      return await _onlineService.translate(text: text, from: from, to: to);
+    } catch (_) {
+      return _offlineService.translate(text: text, from: from, to: to);
+    }
   }
 
   Future<bool> isOfflineAvailable() => _offlineService.isAvailable();

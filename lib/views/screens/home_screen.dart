@@ -155,11 +155,9 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.cloud_off_rounded,
                   color: AppColors.softOrange,
                   onTap: () {
-                    appVm.setTranslationMode(
-                      appVm.translationMode.index == 1
-                          ? TranslationMode.auto
-                          : TranslationMode.offline,
-                    );
+                    const offline = TranslationMode.offline;
+                    appVm.setTranslationMode(offline);
+                    translateVm.setMode(offline);
                     _openTranslate(context);
                   },
                 ),

@@ -1,18 +1,24 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../core/constants/app_constants.dart';
 
-/// Offline translation via Tencent HY-MT1.5 model.
-/// Routes through Genkit backend or direct Hy-MT service.
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+import '../core/constants/app_constants.dart';
+import 'mlkit_language_mapper.dart';
+import 'on_device_translation_service.dart';
+
+/// Offline translation:
+/// - **Phone / release:** on-device ML Kit (fast, no server).
+/// - **Debug:** ML Kit first; HY-MT Python dev server as fallback.
 class OfflineTranslationService {
-  final String _genkitUrl;
-  final String _hyMtUrl;
+  final String? _hyMtUrlOverride;
+  final OnDeviceTranslationService _onDevice;
 
   OfflineTranslationService({
-    String? genkitUrl,
     String? hyMtUrl,
-  })  : _genkitUrl = genkitUrl ?? AppConstants.genkitBaseUrl,
-        _hyMtUrl = hyMtUrl ?? AppConstants.hyMtServiceUrl;
+    OnDeviceTranslationService? onDevice,
+  })  : _hyMtUrlOverride = hyMtUrl,
+        _onDevice = onDevice ?? OnDeviceTranslationService();
 
   Future<String> translate({
     required String text,
@@ -21,32 +27,36 @@ class OfflineTranslationService {
   }) async {
     if (text.trim().isEmpty) return '';
 
-    // Try Genkit Hy-MT flow first
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_genkitUrl/hyMtTranslateFlow'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'data': {
-                'text': text,
-                'sourceLang': from,
-                'targetLang': to,
-              },
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final result = json['result'] as Map<String, dynamic>?;
-        if (result != null && result['translatedText'] != null) {
-          return result['translatedText'] as String;
-        }
+    if (_canUseOnDevice(from, to)) {
+      try {
+        return await _onDevice.translate(text: text, from: from, to: to);
+      } catch (e) {
+        if (!kDebugMode) rethrow;
+        debugPrint('ML Kit translation failed, trying HY-MT dev server: $e');
       }
-    } catch (_) {}
+    }
 
-    // Fallback to direct Hy-MT Python service
+    if (kDebugMode) {
+      return _translateViaHyMt(text: text, from: from, to: to);
+    }
+
+    throw Exception(
+      'On-device translation is not available for this language pair. '
+      'Connect to the internet and use Online mode.',
+    );
+  }
+
+  bool _canUseOnDevice(String from, String to) =>
+      MlKitLanguageMapper.isSupported(from) &&
+      MlKitLanguageMapper.isSupported(to);
+
+  String get _hyMtUrl => _hyMtUrlOverride ?? AppConstants.hyMtServiceUrl;
+
+  Future<String> _translateViaHyMt({
+    required String text,
+    required String from,
+    required String to,
+  }) async {
     try {
       final response = await http
           .post(
@@ -62,30 +72,36 @@ class OfflineTranslationService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return json['translation'] as String? ?? '';
+        final translation = json['translation'] as String?;
+        if (translation != null && translation.isNotEmpty) {
+          return translation;
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('HY-MT dev server failed: $e');
+    }
+
+    if (_canUseOnDevice(from, to)) {
+      return _onDevice.translate(text: text, from: from, to: to);
+    }
 
     throw Exception(
-      'Offline translation unavailable. Ensure HY-MT1.5 service is running.',
+      'Offline translation unavailable for this language pair.',
     );
   }
 
   Future<bool> isAvailable() async {
+    if (await _onDevice.isAvailable()) return true;
+
+    if (!kDebugMode) return false;
+
     try {
       final response = await http
-          .get(Uri.parse('$_genkitUrl/hyMtTranslateFlow'))
+          .get(Uri.parse('$_hyMtUrl/health'))
           .timeout(const Duration(seconds: 3));
-      return response.statusCode < 500;
+      return response.statusCode == 200;
     } catch (_) {
-      try {
-        final response = await http
-            .get(Uri.parse('$_hyMtUrl/health'))
-            .timeout(const Duration(seconds: 3));
-        return response.statusCode == 200;
-      } catch (_) {
-        return false;
-      }
+      return false;
     }
   }
 }

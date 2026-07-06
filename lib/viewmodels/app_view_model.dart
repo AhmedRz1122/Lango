@@ -10,7 +10,7 @@ class AppViewModel extends ChangeNotifier {
 
   bool _hasSeenOnboarding = false;
   int _currentNavIndex = 0;
-  TranslationMode _translationMode = TranslationMode.auto;
+  TranslationMode _translationMode = TranslationMode.offline;
   bool _isOnline = true;
   bool _offlineAvailable = false;
 

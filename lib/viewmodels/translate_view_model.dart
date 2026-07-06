@@ -3,7 +3,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../models/language.dart';
 import '../models/translation_mode.dart';
 import '../models/translation_record.dart';
-import '../services/genkit_ai_service.dart';
 import '../services/translation_repository.dart';
 import '../services/vosk_speech_service.dart';
 
@@ -12,19 +11,16 @@ enum TranslateState { idle, translating, success, error }
 class TranslateViewModel extends ChangeNotifier {
   final TranslationRepository _repository;
   final VoskSpeechService _speechService;
-  final GenkitAiService _aiService;
   final FlutterTts _tts = FlutterTts();
 
   TranslateViewModel({
     TranslationRepository? repository,
     VoskSpeechService? speechService,
-    GenkitAiService? aiService,
   })  : _repository = repository ?? TranslationRepository(),
-        _speechService = speechService ?? VoskSpeechService(),
-        _aiService = aiService ?? GenkitAiService();
+        _speechService = speechService ?? VoskSpeechService();
 
-  Language _sourceLang = Language.supported.first;
-  Language _targetLang = Language.supported[1];
+  Language _sourceLang = Language.offlineSupported[1]; // English
+  Language _targetLang = Language.offlineSupported[4]; // Spanish
   String _sourceText = '';
   String _translatedText = '';
   TranslateState _state = TranslateState.idle;
@@ -33,9 +29,7 @@ class TranslateViewModel extends ChangeNotifier {
   bool _isSpeaking = false;
   bool _showVoiceInput = false;
   bool _isSpeechLoading = false;
-  TranslationMode _mode = TranslationMode.auto;
-  String? _aiExplanation;
-  bool _isAiLoading = false;
+  TranslationMode _mode = TranslationMode.offline;
   List<TranslationRecord> _history = [];
   List<TranslationRecord> _favorites = [];
 
@@ -50,11 +44,15 @@ class TranslateViewModel extends ChangeNotifier {
   bool get showVoiceInput => _showVoiceInput;
   bool get isSpeechLoading => _isSpeechLoading;
   TranslationMode get mode => _mode;
-  String? get aiExplanation => _aiExplanation;
-  bool get isAiLoading => _isAiLoading;
   List<TranslationRecord> get history => _history;
   List<TranslationRecord> get favorites => _favorites;
   VoskSpeechService get speechService => _speechService;
+
+  List<Language> get availableLanguages => Language.forMode(_mode);
+
+  bool get isVoiceInputSupported =>
+      _mode != TranslationMode.online &&
+      VoskSpeechService.isSupportedForLanguage(_sourceLang.code);
 
   Future<void> initialize() async {
     await loadHistory();
@@ -69,14 +67,37 @@ class TranslateViewModel extends ChangeNotifier {
     });
   }
 
+  void _ensureLanguagesValidForMode() {
+    final langs = availableLanguages;
+    if (langs.isEmpty) return;
+
+    if (!langs.any((l) => l.code == _sourceLang.code)) {
+      _sourceLang = langs.first;
+    }
+    if (!langs.any((l) => l.code == _targetLang.code)) {
+      _targetLang = langs.length > 1 ? langs[1] : langs.first;
+    }
+  }
+
   Future<void> _ensureSpeechReady() async {
-    if (_speechService.isInitialized || _speechService.isLoading) return;
+    if (!isVoiceInputSupported) {
+      _errorMessage =
+          'Voice input is not available for ${_sourceLang.name}. Use keyboard instead.';
+      notifyListeners();
+      return;
+    }
+
+    if (_speechService.isInitialized &&
+        _speechService.currentLangCode == _sourceLang.code) {
+      return;
+    }
+    if (_speechService.isLoading) return;
 
     _isSpeechLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final ok = await _speechService.initialize();
+    final ok = await _speechService.initializeForLanguage(_sourceLang.code);
     _isSpeechLoading = false;
 
     if (!ok) {
@@ -116,6 +137,7 @@ class TranslateViewModel extends ChangeNotifier {
 
   void setMode(TranslationMode mode) {
     _mode = mode;
+    _ensureLanguagesValidForMode();
     notifyListeners();
   }
 
@@ -124,7 +146,6 @@ class TranslateViewModel extends ChangeNotifier {
 
     _state = TranslateState.translating;
     _errorMessage = null;
-    _aiExplanation = null;
     notifyListeners();
 
     try {
@@ -151,7 +172,10 @@ class TranslateViewModel extends ChangeNotifier {
       _state = TranslateState.success;
     } catch (e) {
       _state = TranslateState.error;
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = e
+          .toString()
+          .replaceAll('Exception: ', '')
+          .replaceAll('ClientException: ', '');
     }
     notifyListeners();
   }
@@ -198,7 +222,7 @@ class TranslateViewModel extends ChangeNotifier {
         await _speechService.stopListening();
         _isListening = false;
       } else {
-        await _speechService.startListening();
+        await _speechService.startListening(langCode: _sourceLang.code);
         _isListening = true;
       }
       _errorMessage = null;
@@ -219,27 +243,6 @@ class TranslateViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> explainWithAi() async {
-    if (_sourceText.isEmpty || _translatedText.isEmpty) return;
-
-    _isAiLoading = true;
-    notifyListeners();
-
-    try {
-      _aiExplanation = await _aiService.explainTranslation(
-        sourceText: _sourceText,
-        translatedText: _translatedText,
-        sourceLang: _sourceLang.name,
-        targetLang: _targetLang.name,
-      );
-    } catch (e) {
-      _aiExplanation = 'AI insights are currently unavailable.';
-    }
-
-    _isAiLoading = false;
-    notifyListeners();
-  }
-
   Future<void> loadHistory() async {
     _history = await _repository.getHistory();
     _favorites = await _repository.getFavorites();
@@ -254,7 +257,6 @@ class TranslateViewModel extends ChangeNotifier {
   void clearTexts() {
     _sourceText = '';
     _translatedText = '';
-    _aiExplanation = null;
     _state = TranslateState.idle;
     notifyListeners();
   }

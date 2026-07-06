@@ -4,14 +4,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/translation_mode.dart';
+import '../../viewmodels/app_view_model.dart';
 import '../../viewmodels/translate_view_model.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/voice_input_bar.dart';
 
 class TranslateScreen extends StatefulWidget {
   final bool startVoice;
+  final bool forceOffline;
+  final bool forceOnline;
 
-  const TranslateScreen({super.key, this.startVoice = false});
+  const TranslateScreen({
+    super.key,
+    this.startVoice = false,
+    this.forceOffline = false,
+    this.forceOnline = false,
+  });
 
   @override
   State<TranslateScreen> createState() => _TranslateScreenState();
@@ -30,6 +39,16 @@ class _TranslateScreenState extends State<TranslateScreen> {
     if (widget.startVoice) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _vm.showVoiceInputBar();
+      });
+    }
+
+    if (widget.forceOffline || widget.forceOnline) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final mode = widget.forceOnline
+            ? TranslationMode.online
+            : TranslationMode.offline;
+        _vm.setMode(mode);
+        context.read<AppViewModel>().setTranslationMode(mode);
       });
     }
   }
@@ -63,7 +82,9 @@ class _TranslateScreenState extends State<TranslateScreen> {
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text('Translate'),
+          title: Text(vm.mode == TranslationMode.online
+              ? 'Online Translate'
+              : 'Offline Translate'),
           actions: [
             IconButton(
               icon: const Icon(Icons.history_rounded),
@@ -84,6 +105,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                 child: Column(
                   children: [
                     LanguageSelector(
+                      languages: vm.availableLanguages,
                       sourceLang: vm.sourceLang,
                       targetLang: vm.targetLang,
                       onSourceChanged: vm.setSourceLang,
@@ -100,7 +122,9 @@ class _TranslateScreenState extends State<TranslateScreen> {
                       isSource: true,
                       charCount: vm.sourceText.length,
                       onChanged: vm.setSourceText,
-                      onMic: () => vm.showVoiceInputBar(),
+                      onMic: vm.isVoiceInputSupported
+                          ? () => vm.showVoiceInputBar()
+                          : null,
                       onSpeak: () => vm.speak(vm.sourceText, vm.sourceLang.code),
                       isListening: vm.isListening,
                       isVoiceActive: vm.showVoiceInput,

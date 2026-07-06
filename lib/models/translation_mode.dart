@@ -19,9 +19,9 @@ extension TranslationModeExtension on TranslationMode {
   String get description {
     switch (this) {
       case TranslationMode.online:
-        return 'Cloud-powered translation';
+        return 'DeepSeek cloud translation (~100 languages)';
       case TranslationMode.offline:
-        return 'On-device translation';
+        return 'On-device translation (ML Kit)';
       case TranslationMode.auto:
         return 'Switches based on connectivity';
     }

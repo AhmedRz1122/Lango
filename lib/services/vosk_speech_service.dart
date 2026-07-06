@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vosk_flutter_service/vosk_flutter.dart';
-import '../core/constants/app_constants.dart';
+import '../models/vosk_language_config.dart';
 
 class VoskSpeechService {
   final VoskFlutterPlugin _vosk = VoskFlutterPlugin.instance();
@@ -20,6 +20,7 @@ class VoskSpeechService {
   bool _isInitialized = false;
   bool _isLoading = false;
   String? _lastError;
+  String? _currentLangCode;
 
   Stream<String> get onPartial => _partialController.stream;
   Stream<String> get onResult => _resultController.stream;
@@ -27,9 +28,23 @@ class VoskSpeechService {
   bool get isInitialized => _isInitialized;
   bool get isLoading => _isLoading;
   String? get lastError => _lastError;
+  String? get currentLangCode => _currentLangCode;
 
-  Future<bool> initialize() async {
-    if (_isInitialized) return true;
+  static bool isSupportedForLanguage(String langCode) =>
+      VoskLanguageConfig.isSupported(langCode);
+
+  Future<bool> initialize({String langCode = 'en'}) =>
+      initializeForLanguage(langCode);
+
+  Future<bool> initializeForLanguage(String langCode) async {
+    final config = VoskLanguageConfig.forLanguage(langCode);
+    if (config == null) {
+      _lastError =
+          'Voice input is not available for this language. Use keyboard instead.';
+      return false;
+    }
+
+    if (_isInitialized && _currentLangCode == langCode) return true;
     if (_isLoading) return false;
 
     _isLoading = true;
@@ -42,7 +57,11 @@ class VoskSpeechService {
         return false;
       }
 
-      final modelPath = await _loadModel();
+      if (_isInitialized && _currentLangCode != langCode) {
+        await _resetResources();
+      }
+
+      final modelPath = await _loadModel(config);
       _model = await _vosk.createModel(modelPath);
       _recognizer = await _vosk.createRecognizer(
         model: _model!,
@@ -63,11 +82,13 @@ class VoskSpeechService {
         if (text.isNotEmpty) _resultController.add(text);
       });
 
+      _currentLangCode = langCode;
       _isInitialized = true;
       return true;
     } catch (e, stack) {
       debugPrint('Vosk initialization failed: $e\n$stack');
-      _lastError = 'Speech model could not be loaded. Check your internet connection and try again.';
+      _lastError =
+          'Speech model could not be loaded. Check your internet connection and try again.';
       await _resetResources();
       return false;
     } finally {
@@ -75,14 +96,18 @@ class VoskSpeechService {
     }
   }
 
-  Future<String> _loadModel() async {
-    try {
-      await rootBundle.load(AppConstants.voskModelAsset);
-      return ModelLoader().loadFromAssets(AppConstants.voskModelAsset);
-    } catch (_) {
-      debugPrint('Vosk asset missing, downloading model from network...');
-      return ModelLoader().loadFromNetwork(AppConstants.voskModelUrl);
+  Future<String> _loadModel(VoskLanguageConfig config) async {
+    final assetPath = config.assetPath;
+    if (assetPath != null) {
+      try {
+        await rootBundle.load(assetPath);
+        return ModelLoader().loadFromAssets(assetPath);
+      } catch (_) {
+        debugPrint('Vosk asset missing, downloading model from network...');
+      }
     }
+
+    return ModelLoader().loadFromNetwork(config.downloadUrl);
   }
 
   String _extractText(String raw) {
@@ -109,12 +134,16 @@ class VoskSpeechService {
     ).firstMatch(jsonStr);
     if (textMatch != null) return textMatch.group(1)!.trim();
 
-    return jsonStr.replaceAll(RegExp(r'[{}"\s]'), '').replaceAll('partial:', '').replaceAll('text:', '');
+    return jsonStr
+        .replaceAll(RegExp(r'[{}"\s]'), '')
+        .replaceAll('partial:', '')
+        .replaceAll('text:', '');
   }
 
-  Future<void> startListening() async {
-    if (!_isInitialized) {
-      final ok = await initialize();
+  Future<void> startListening({String? langCode}) async {
+    final code = langCode ?? _currentLangCode ?? 'en';
+    if (!_isInitialized || _currentLangCode != code) {
+      final ok = await initializeForLanguage(code);
       if (!ok) {
         throw Exception(_lastError ?? 'Speech recognition not available');
       }
@@ -147,7 +176,10 @@ class VoskSpeechService {
     _model = null;
     _isInitialized = false;
     _isListening = false;
+    _currentLangCode = null;
   }
+
+  Future<void> resetModel() => _resetResources();
 
   Future<void> dispose() async {
     await _resetResources();

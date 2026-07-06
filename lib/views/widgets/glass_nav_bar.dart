@@ -46,8 +46,8 @@ class GlassNavBar extends StatelessWidget {
                   onTap: () => onTap(0),
                 ),
                 _NavItem(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'AI',
+                  icon: Icons.translate_rounded,
+                  label: 'Translate',
                   isActive: currentIndex == 1,
                   onTap: () => onTap(1),
                 ),
