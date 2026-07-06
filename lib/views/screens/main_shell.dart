@@ -3,19 +3,19 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../viewmodels/app_view_model.dart';
 import '../widgets/glass_nav_bar.dart';
-import 'about_screen.dart';
+import 'ai_screen.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
-import 'translation_screen.dart';
+import 'profile_screen.dart';
 
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
 
   static const _screens = [
     HomeScreen(),
-    TranslationScreen(),
+    AiScreen(),
     HistoryScreen(),
-    AboutScreen(),
+    ProfileScreen(),
   ];
 
   @override
