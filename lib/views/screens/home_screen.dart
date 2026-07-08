@@ -133,7 +133,7 @@ class HomeScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.05,
+              childAspectRatio: 0.92,
               children: [
                 FeatureCard(
                   title: 'Voice Translator',

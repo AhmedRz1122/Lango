@@ -26,11 +26,11 @@ class FeatureCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(32),
-            topRight: const Radius.circular(32),
-            bottomLeft: const Radius.circular(16),
-            bottomRight: const Radius.circular(40),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(40),
           ),
         ),
         child: Column(
@@ -44,10 +44,11 @@ class FeatureCard extends StatelessWidget {
               ),
               child: Icon(icon, color: AppColors.textPrimary, size: 22),
             ),
-            const SizedBox(height: 10),
-            Expanded(
+            const SizedBox(height: 8),
+            Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     title,
@@ -65,7 +66,7 @@ class FeatureCard extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 10,
                       color: AppColors.textSecondary,
-                      height: 1.3,
+                      height: 1.25,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -73,6 +74,7 @@ class FeatureCard extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.bottomRight,
               child: Container(

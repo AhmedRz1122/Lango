@@ -8,7 +8,7 @@ import '../../models/translation_mode.dart';
 import '../../viewmodels/app_view_model.dart';
 import '../../viewmodels/translate_view_model.dart';
 import '../widgets/language_selector.dart';
-import '../widgets/voice_input_bar.dart';
+import '../widgets/voice_floating_mic.dart';
 
 class TranslateScreen extends StatefulWidget {
   final bool startVoice;
@@ -92,96 +92,110 @@ class _TranslateScreenState extends State<TranslateScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  vm.showVoiceInput ? 12 : 20,
-                ),
-                child: Column(
-                  children: [
-                    LanguageSelector(
-                      languages: vm.availableLanguages,
-                      sourceLang: vm.sourceLang,
-                      targetLang: vm.targetLang,
-                      onSourceChanged: vm.setSourceLang,
-                      onTargetChanged: vm.setTargetLang,
-                      onSwap: vm.swapLanguages,
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      20,
+                      20,
+                      vm.showVoiceInput ? 120 : 20,
                     ),
-                    const SizedBox(height: 20),
-                    _TranslationCard(
-                      label: vm.sourceLang.name,
-                      controller: _textController,
-                      hint: 'Enter text to translate...',
-                      color: AppColors.lavenderLight,
-                      accentColor: AppColors.lavenderDeep,
-                      isSource: true,
-                      charCount: vm.sourceText.length,
-                      onChanged: vm.setSourceText,
-                      onMic: vm.isVoiceInputSupported
-                          ? () => vm.showVoiceInputBar()
-                          : null,
-                      onSpeak: () => vm.speak(vm.sourceText, vm.sourceLang.code),
-                      isListening: vm.isListening,
-                      isVoiceActive: vm.showVoiceInput,
-                    ),
-                    const SizedBox(height: 16),
-                    if (vm.state == TranslateState.translating)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(
-                          color: AppColors.lavenderDeep,
+                    child: Column(
+                      children: [
+                        LanguageSelector(
+                          languages: vm.availableLanguages,
+                          sourceLang: vm.sourceLang,
+                          targetLang: vm.targetLang,
+                          onSourceChanged: vm.setSourceLang,
+                          onTargetChanged: vm.setTargetLang,
+                          onSwap: vm.swapLanguages,
                         ),
-                      )
-                    else
-                      _TranslationCard(
-                        label: vm.targetLang.name,
-                        text: vm.translatedText,
-                        hint: 'Translation will appear here',
-                        color: AppColors.mintLight,
-                        accentColor: AppColors.mintDeep,
-                        isSource: false,
-                        onSpeak: () =>
-                            vm.speak(vm.translatedText, vm.targetLang.code),
-                        onCopy: () {
-                          Clipboard.setData(
-                            ClipboardData(text: vm.translatedText),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Copied to clipboard')),
-                          );
-                        },
-                      ),
-                    if (vm.errorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        vm.errorMessage!,
-                        style: GoogleFonts.poppins(
-                          color: Colors.red.shade400,
-                          fontSize: 13,
+                        const SizedBox(height: 20),
+                        _TranslationCard(
+                          label: vm.sourceLang.name,
+                          controller: _textController,
+                          hint: 'Enter text to translate...',
+                          color: AppColors.lavenderLight,
+                          accentColor: AppColors.lavenderDeep,
+                          isSource: true,
+                          charCount: vm.sourceText.length,
+                          onChanged: vm.setSourceText,
+                          onMic: vm.isVoiceInputSupported
+                              ? () => vm.toggleVoiceInputBar()
+                              : null,
+                          onSpeak: () =>
+                              vm.speak(vm.sourceText, vm.sourceLang.code),
+                          isListening: vm.isListening,
+                          isVoiceActive: vm.showVoiceInput,
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    _QuickPhrases(
-                      onSelected: (phrase) {
-                        vm.setSourceText(phrase);
-                        vm.translate();
-                      },
+                        const SizedBox(height: 16),
+                        if (vm.state == TranslateState.translating)
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(
+                              color: AppColors.lavenderDeep,
+                            ),
+                          )
+                        else
+                          _TranslationCard(
+                            label: vm.targetLang.name,
+                            text: vm.translatedText,
+                            hint: 'Translation will appear here',
+                            color: AppColors.mintLight,
+                            accentColor: AppColors.mintDeep,
+                            isSource: false,
+                            onSpeak: () =>
+                                vm.speak(vm.translatedText, vm.targetLang.code),
+                            onCopy: () {
+                              Clipboard.setData(
+                                ClipboardData(text: vm.translatedText),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Copied to clipboard'),
+                                ),
+                              );
+                            },
+                          ),
+                        if (vm.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            vm.errorMessage!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.red.shade400,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        _QuickPhrases(
+                          onSelected: (phrase) {
+                            vm.setSourceText(phrase);
+                            vm.translate();
+                          },
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            if (vm.showVoiceInput)
-              VoiceInputBar(
-                isListening: vm.isListening,
-                isLoading: vm.isSpeechLoading,
-                onTap: vm.toggleListening,
+            if (vm.showVoiceInput && vm.isVoiceInputSupported)
+              Positioned(
+                left: 16,
+                bottom: 60,
+                child: VoiceFloatingMic(
+                  isListening: vm.isListening,
+                  isLoading: vm.isSpeechLoading,
+                  sourceLang: vm.sourceLang,
+                  languages: vm.availableLanguages,
+                  onToggleListening: vm.toggleListening,
+                  onLanguageSelected: vm.setSourceLang,
+                ),
               ),
           ],
         ),
@@ -199,9 +213,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                 ),
               )
             : null,
-        floatingActionButtonLocation: vm.showVoiceInput
-            ? FloatingActionButtonLocation.centerFloat
-            : FloatingActionButtonLocation.endFloat,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }

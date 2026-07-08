@@ -19,8 +19,14 @@ class TranslateViewModel extends ChangeNotifier {
   })  : _repository = repository ?? TranslationRepository(),
         _speechService = speechService ?? VoskSpeechService();
 
-  Language _sourceLang = Language.offlineSupported[1]; // English
-  Language _targetLang = Language.offlineSupported[4]; // Spanish
+  Language _sourceLang = Language.offlineSupported.firstWhere(
+    (l) => l.code == 'en',
+    orElse: () => Language.offlineSupported[1],
+  );
+  Language _targetLang = Language.offlineSupported.firstWhere(
+    (l) => l.code == 'es',
+    orElse: () => Language.offlineSupported[4],
+  );
   String _sourceText = '';
   String _translatedText = '';
   TranslateState _state = TranslateState.idle;
@@ -103,6 +109,7 @@ class TranslateViewModel extends ChangeNotifier {
     if (!ok) {
       _errorMessage = _speechService.lastError ??
           'Speech recognition is unavailable on this device.';
+      // Keep floating mic visible so user can retry.
     }
     notifyListeners();
   }
@@ -192,6 +199,7 @@ class TranslateViewModel extends ChangeNotifier {
       _isListening = false;
     }
     _showVoiceInput = false;
+    _errorMessage = null;
     notifyListeners();
   }
 
@@ -251,6 +259,16 @@ class TranslateViewModel extends ChangeNotifier {
 
   Future<void> toggleFavorite(String id) async {
     await _repository.toggleFavorite(id);
+    await loadHistory();
+  }
+
+  Future<void> deleteTranslation(String id) async {
+    await _repository.deleteTranslation(id);
+    await loadHistory();
+  }
+
+  Future<void> clearHistory() async {
+    await _repository.clearHistory();
     await loadHistory();
   }
 

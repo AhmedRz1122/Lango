@@ -33,13 +33,12 @@ class HistoryScreen extends StatelessWidget {
                 ),
                 if (history.isNotEmpty)
                   TextButton(
-                    onPressed: () async {
-                      // Clear handled via repository in future
-                    },
+                    onPressed: () => _confirmClearHistory(context, vm),
                     child: Text(
                       'Clear',
                       style: GoogleFonts.poppins(
-                        color: AppColors.textSecondary,
+                        color: Colors.red.shade400,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -84,9 +83,17 @@ class HistoryScreen extends StatelessWidget {
                         return _HistoryCard(
                           record: history[i],
                           onFavorite: () => vm.toggleFavorite(history[i].id),
+                          onDelete: () =>
+                              _confirmDeleteItem(context, vm, history[i]),
                           onCopy: () {
                             Clipboard.setData(
                               ClipboardData(text: history[i].translatedText),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Copied to clipboard'),
+                                duration: Duration(seconds: 1),
+                              ),
                             );
                           },
                         );
@@ -98,16 +105,119 @@ class HistoryScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _confirmClearHistory(
+    BuildContext context,
+    TranslateViewModel vm,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cream,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Clear history?',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'This will permanently delete all saved translations from this device.',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Clear all',
+              style: GoogleFonts.poppins(
+                color: Colors.red.shade400,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      await vm.clearHistory();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('History cleared')),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteItem(
+    BuildContext context,
+    TranslateViewModel vm,
+    TranslationRecord record,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cream,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete translation?',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Remove this translation from your history?',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.red.shade400,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await vm.deleteTranslation(record.id);
+    }
+  }
 }
 
 class _HistoryCard extends StatelessWidget {
   final TranslationRecord record;
   final VoidCallback onFavorite;
+  final VoidCallback onDelete;
   final VoidCallback onCopy;
 
   const _HistoryCard({
     required this.record,
     required this.onFavorite,
+    required this.onDelete,
     required this.onCopy,
   });
 
@@ -217,6 +327,14 @@ class _HistoryCard extends StatelessWidget {
                   size: 18,
                 ),
                 color: record.isFavorite ? Colors.red : AppColors.textSecondary,
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                color: Colors.red.shade300,
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
               ),

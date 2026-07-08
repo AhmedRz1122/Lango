@@ -108,6 +108,22 @@ class TranslationRepository {
     );
   }
 
+  Future<void> deleteTranslation(String id) async {
+    final history = await getHistory();
+    history.removeWhere((r) => r.id == id);
+
+    final prefs = await SharedPreferences.getInstance();
+    if (history.isEmpty) {
+      await prefs.remove(_historyKey);
+      return;
+    }
+
+    await prefs.setString(
+      _historyKey,
+      jsonEncode(history.map((r) => r.toJson()).toList()),
+    );
+  }
+
   Future<void> clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_historyKey);

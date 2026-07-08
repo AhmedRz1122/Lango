@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vosk_flutter_service/vosk_flutter.dart';
+
 import '../models/vosk_language_config.dart';
 
 class VoskSpeechService {
@@ -21,6 +23,8 @@ class VoskSpeechService {
   bool _isLoading = false;
   String? _lastError;
   String? _currentLangCode;
+
+  static const _channel = MethodChannel('vosk_flutter');
 
   Stream<String> get onPartial => _partialController.stream;
   Stream<String> get onResult => _resultController.stream;
@@ -44,7 +48,11 @@ class VoskSpeechService {
       return false;
     }
 
-    if (_isInitialized && _currentLangCode == langCode) return true;
+    if (_isInitialized &&
+        _currentLangCode == langCode &&
+        _speechService != null) {
+      return true;
+    }
     if (_isLoading) return false;
 
     _isLoading = true;
@@ -57,17 +65,20 @@ class VoskSpeechService {
         return false;
       }
 
-      if (_isInitialized && _currentLangCode != langCode) {
-        await _resetResources();
-      }
+      // Native SpeechService is a singleton — always clear leftovers
+      // (hot restart / previous screen can leave it alive).
+      await _forceDestroyNativeSpeechService();
+      await _resetResources();
 
       final modelPath = await _loadModel(config);
+      debugPrint('Vosk loading model from: $modelPath');
+
       _model = await _vosk.createModel(modelPath);
       _recognizer = await _vosk.createRecognizer(
         model: _model!,
         sampleRate: 16000,
       );
-      _speechService = await _vosk.initSpeechService(_recognizer!);
+      _speechService = await _initSpeechServiceWithRetry(_recognizer!);
 
       await _partialSub?.cancel();
       await _resultSub?.cancel();
@@ -84,15 +95,47 @@ class VoskSpeechService {
 
       _currentLangCode = langCode;
       _isInitialized = true;
+      _lastError = null;
       return true;
     } catch (e, stack) {
       debugPrint('Vosk initialization failed: $e\n$stack');
-      _lastError =
-          'Speech model could not be loaded. Check your internet connection and try again.';
+      _lastError = _friendlyError(e);
+      await _forceDestroyNativeSpeechService();
       await _resetResources();
       return false;
     } finally {
       _isLoading = false;
+    }
+  }
+
+  Future<SpeechService> _initSpeechServiceWithRetry(Recognizer recognizer) async {
+    try {
+      return await _vosk.initSpeechService(recognizer);
+    } on PlatformException catch (e) {
+      if (e.code == 'INITIALIZE_FAIL' &&
+          (e.message?.contains('already exist') == true ||
+              e.message?.contains('already initialized') == true)) {
+        debugPrint('Stale SpeechService found — destroying and retrying');
+        await _forceDestroyNativeSpeechService();
+        return _vosk.initSpeechService(recognizer);
+      }
+      rethrow;
+    }
+  }
+
+  /// Clears the Android/iOS singleton SpeechService even if Dart lost the handle.
+  Future<void> _forceDestroyNativeSpeechService() async {
+    try {
+      await _speechService?.dispose();
+    } catch (e) {
+      debugPrint('Dart SpeechService.dispose failed: $e');
+    }
+    _speechService = null;
+
+    try {
+      await _channel.invokeMethod<void>('speechService.destroy');
+    } catch (_) {
+      // Already destroyed or never created — fine.
     }
   }
 
@@ -102,12 +145,33 @@ class VoskSpeechService {
       try {
         await rootBundle.load(assetPath);
         return ModelLoader().loadFromAssets(assetPath);
-      } catch (_) {
-        debugPrint('Vosk asset missing, downloading model from network...');
+      } catch (e) {
+        debugPrint('Vosk asset missing ($e), trying network/cache...');
       }
     }
 
-    return ModelLoader().loadFromNetwork(config.downloadUrl);
+    try {
+      return await ModelLoader().loadFromNetwork(config.downloadUrl);
+    } catch (e) {
+      debugPrint('Vosk network load failed: $e');
+      rethrow;
+    }
+  }
+
+  String _friendlyError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('Microphone') || msg.contains('PERMISSION')) {
+      return 'Microphone permission is required for voice input.';
+    }
+    if (msg.contains('already exist') || msg.contains('already initialized')) {
+      return 'Speech engine was busy. Please tap the mic again.';
+    }
+    if (msg.contains('Socket') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('network')) {
+      return 'Could not download the speech model. Check your internet and try again.';
+    }
+    return 'Speech model could not be loaded. Tap the mic again to retry.';
   }
 
   String _extractText(String raw) {
@@ -142,7 +206,9 @@ class VoskSpeechService {
 
   Future<void> startListening({String? langCode}) async {
     final code = langCode ?? _currentLangCode ?? 'en';
-    if (!_isInitialized || _currentLangCode != code) {
+    if (!_isInitialized ||
+        _currentLangCode != code ||
+        _speechService == null) {
       final ok = await initializeForLanguage(code);
       if (!ok) {
         throw Exception(_lastError ?? 'Speech recognition not available');
@@ -159,7 +225,11 @@ class VoskSpeechService {
 
   Future<void> stopListening() async {
     if (!_isListening) return;
-    await _speechService?.stop();
+    try {
+      await _speechService?.stop();
+    } catch (e) {
+      debugPrint('stopListening failed: $e');
+    }
     _isListening = false;
   }
 
@@ -168,9 +238,21 @@ class VoskSpeechService {
     await _resultSub?.cancel();
     _partialSub = null;
     _resultSub = null;
-    await _speechService?.dispose();
-    _recognizer?.dispose();
-    _model?.dispose();
+
+    try {
+      await _speechService?.stop();
+    } catch (_) {}
+    try {
+      await _speechService?.dispose();
+    } catch (_) {}
+
+    try {
+      await _recognizer?.dispose();
+    } catch (_) {}
+    try {
+      _model?.dispose();
+    } catch (_) {}
+
     _speechService = null;
     _recognizer = null;
     _model = null;
@@ -179,9 +261,13 @@ class VoskSpeechService {
     _currentLangCode = null;
   }
 
-  Future<void> resetModel() => _resetResources();
+  Future<void> resetModel() async {
+    await _forceDestroyNativeSpeechService();
+    await _resetResources();
+  }
 
   Future<void> dispose() async {
+    await _forceDestroyNativeSpeechService();
     await _resetResources();
     if (!_partialController.isClosed) await _partialController.close();
     if (!_resultController.isClosed) await _resultController.close();
