@@ -4,9 +4,9 @@
   "description": "Genkit AI backend for Lango translation app with HY-MT1.5 offline support",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "build": "tsc",
+    "dev": "node api.js && tsx watch src/index.ts",
+    "start": "node api.js && tsx src/index.ts",
+    "build": "node api.js && tsc",
     "genkit:start": "genkit start -- tsx src/index.ts"
   },
   "dependencies": {
