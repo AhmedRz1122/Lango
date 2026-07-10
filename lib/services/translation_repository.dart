@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../core/constants/app_constants.dart';
 import '../models/translation_mode.dart';
 import '../models/translation_record.dart';
 import 'offline_translation_service.dart';
@@ -13,6 +14,8 @@ class TranslationRepository {
   final Connectivity _connectivity;
   final Uuid _uuid = const Uuid();
   static const _historyKey = 'translation_history';
+  static const _userNameKey = 'user_name';
+  static const _userEmailKey = 'user_email';
 
   TranslationRepository({
     OnlineTranslationService? onlineService,
@@ -127,5 +130,22 @@ class TranslationRepository {
   Future<void> clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_historyKey);
+  }
+
+  Future<(String, String)> loadUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (
+      prefs.getString(_userNameKey) ?? AppConstants.defaultUserName,
+      prefs.getString(_userEmailKey) ?? AppConstants.defaultUserEmail,
+    );
+  }
+
+  Future<void> saveUserProfile({
+    required String name,
+    required String email,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userNameKey, name);
+    await prefs.setString(_userEmailKey, email);
   }
 }

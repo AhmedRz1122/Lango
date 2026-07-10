@@ -1,7 +1,5 @@
-# Vosk Speech Model
+# Speech models (not bundled in the app)
 
-The app automatically downloads the Vosk model on first use if it is not bundled here.
+Speech recognition models are **not** included in the Play Store download to keep the app under size limits.
 
-**Optional:** For fully offline first launch, download `vosk-model-small-en-us-0.15.zip` from https://alphacephei.com/vosk/models and place it in this folder.
-
-The model is cached on device after the first download.
+On first voice use, the required model is downloaded once and cached on the device. An internet connection is needed for that first download only.

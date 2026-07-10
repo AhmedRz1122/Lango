@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/translation_mode.dart';
 import '../../viewmodels/app_view_model.dart';
@@ -24,14 +25,14 @@ class ProfileScreen extends StatelessWidget {
             const AppLogo(size: 120),
             const SizedBox(height: 16),
             Text(
-              'Lango User',
+              appVm.userName,
               style: GoogleFonts.poppins(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
-              'Translation enthusiast',
+              appVm.userEmail,
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -87,7 +88,7 @@ class ProfileScreen extends StatelessWidget {
                 _StatusTile(
                   label: 'Speech Recognition',
                   value: translateVm.speechService.isInitialized
-                      ? 'Vosk ready'
+                      ? 'Ready'
                       : 'Not initialized',
                   isGood: translateVm.speechService.isInitialized,
                 ),
@@ -96,27 +97,152 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
             _SettingsSection(
               title: 'About',
-              children: [
-                _InfoTile(
-                  icon: Icons.info_outline_rounded,
-                  label: 'Version',
-                  value: '1.0.0',
-                ),
-                _InfoTile(
-                  icon: Icons.translate_rounded,
-                  label: 'Offline Model',
-                  value: 'Tencent HY-MT1.5',
-                ),
-                _InfoTile(
-                  icon: Icons.mic_rounded,
-                  label: 'Speech Engine',
-                  value: 'Vosk',
-                ),
+              children: const [
+                _AboutContent(),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AboutContent extends StatelessWidget {
+  const _AboutContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppConstants.appName,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Version ${AppConstants.appVersion}',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '${AppConstants.appName} is a multilingual translation companion built for '
+            'travel, study, and everyday conversation. Translate text and speech '
+            'between languages with a focus on clarity, speed, and ease of use.',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _AboutBullet(
+            icon: Icons.translate_rounded,
+            title: 'Text translation',
+            body:
+                'Type or paste content and receive accurate translations in offline '
+                'or online mode, depending on your connection and preference.',
+          ),
+          const SizedBox(height: 12),
+          _AboutBullet(
+            icon: Icons.mic_rounded,
+            title: 'Voice input',
+            body:
+                'Speak naturally and have your words transcribed for translation, '
+                'ideal when typing is inconvenient.',
+          ),
+          const SizedBox(height: 12),
+          _AboutBullet(
+            icon: Icons.cloud_off_rounded,
+            title: 'Offline support',
+            body:
+                'Core languages work on your device without an internet connection '
+                'once language packs are set up.',
+          ),
+          const SizedBox(height: 12),
+          _AboutBullet(
+            icon: Icons.language_rounded,
+            title: 'Extended online coverage',
+            body:
+                'When connected, access a broader set of languages through secure '
+                'cloud translation.',
+          ),
+          const SizedBox(height: 12),
+          _AboutBullet(
+            icon: Icons.history_rounded,
+            title: 'History & favorites',
+            body:
+                'Review past translations and mark useful phrases for quick access later.',
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Privacy note: Offline translations are processed on your device. '
+            'Online translations are sent only when you choose cloud mode and '
+            'have an active connection.',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              height: 1.45,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutBullet extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _AboutBullet({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: AppColors.lavenderDeep),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                body,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -222,33 +348,6 @@ class _StatusTile extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.lavenderDeep, size: 22),
-      title: Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-      trailing: Text(
-        value,
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          color: AppColors.textSecondary,
-        ),
       ),
     );
   }
