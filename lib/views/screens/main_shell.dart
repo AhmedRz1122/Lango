@@ -20,7 +20,8 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navIndex = context.watch<AppViewModel>().currentNavIndex;
+    final appVm = context.watch<AppViewModel>();
+    final navIndex = appVm.currentNavIndex;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -30,6 +31,8 @@ class MainShell extends StatelessWidget {
       ),
       bottomNavigationBar: GlassNavBar(
         currentIndex: navIndex,
+        userName: appVm.userName,
+        userEmail: appVm.userEmail,
         onTap: (i) => context.read<AppViewModel>().setNavIndex(i),
       ),
     );
