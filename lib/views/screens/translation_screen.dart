@@ -1,38 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../models/translation_mode.dart';
-import '../../viewmodels/app_view_model.dart';
-import '../../viewmodels/translate_view_model.dart';
-import '../widgets/translate_screen.dart';
+import '../../utils/app_router.dart';
 
 class TranslationScreen extends StatelessWidget {
   const TranslationScreen({super.key});
-
-  void _openOffline(BuildContext context) {
-    final appVm = context.read<AppViewModel>();
-    final translateVm = context.read<TranslateViewModel>();
-    appVm.setTranslationMode(TranslationMode.offline);
-    translateVm.setMode(TranslationMode.offline);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TranslateScreen(forceOffline: true),
-      ),
-    );
-  }
-
-  void _openOnline(BuildContext context) {
-    final appVm = context.read<AppViewModel>();
-    final translateVm = context.read<TranslateViewModel>();
-    appVm.setTranslationMode(TranslationMode.online);
-    translateVm.setMode(TranslationMode.online);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TranslateScreen(forceOnline: true),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +36,7 @@ class TranslationScreen extends StatelessWidget {
                   'Fast on-device translation — 38 languages, no internet needed after setup',
               icon: Icons.cloud_off_rounded,
               color: AppColors.softOrange,
-              onTap: () => _openOffline(context),
+              onTap: () => AppRouter.openOfflineTranslation(context),
             ),
             const SizedBox(height: 16),
             _ModeCard(
@@ -73,7 +45,7 @@ class TranslationScreen extends StatelessWidget {
                   'DeepSeek cloud translation — ~100 languages (internet required)',
               icon: Icons.language_rounded,
               color: AppColors.lavender,
-              onTap: () => _openOnline(context),
+              onTap: () => AppRouter.openOnlineTranslation(context),
             ),
             const SizedBox(height: 28),
             Container(
