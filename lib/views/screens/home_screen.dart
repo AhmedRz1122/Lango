@@ -3,20 +3,39 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/translation_mode.dart';
+import '../../utils/app_router.dart';
 import '../../viewmodels/app_view_model.dart';
 import '../../viewmodels/translate_view_model.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/feature_card.dart';
-import '../widgets/translate_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _showRefreshBanner = false;
 
   String _greeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
+  }
+
+  Future<void> _onPullRefresh() async {
+    setState(() => _showRefreshBanner = true);
+
+    final appVm = context.read<AppViewModel>();
+    await appVm.refreshConnectivity();
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      setState(() => _showRefreshBanner = false);
+    }
   }
 
   @override
@@ -26,187 +45,274 @@ class HomeScreen extends StatelessWidget {
     final recent = translateVm.history.take(3).toList();
 
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: const AppLogo(size: 48),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        children: [
+          RefreshIndicator(
+            color: AppColors.lavenderDeep,
+            onRefresh: _onPullRefresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        _greeting(),
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: const AppLogo(size: 48),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _greeting(),
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              'Welcome to Lango',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Welcome to Lango',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                      _ModeBadge(
+                        isOnline: appVm.isOnline,
+                        mode: appVm.translationMode,
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => appVm.setNavIndex(3),
+                        icon: const Icon(Icons.account_circle),
+                        color: AppColors.textSecondary,
                       ),
                     ],
                   ),
-                ),
-                _ModeBadge(
-                  isOnline: appVm.isOnline,
-                  mode: appVm.translationMode,
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => appVm.refreshConnectivity(),
-                  icon: const Icon(Icons.notifications_outlined),
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            GestureDetector(
-              onTap: () => _openTranslate(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.lavender.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Type or paste text here..',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textSecondary.withValues(alpha: 0.6),
-                          fontSize: 14,
-                        ),
+                  const SizedBox(height: 28),
+                  GestureDetector(
+                    onTap: () => AppRouter.goToTranslationTab(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.lavender.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Type or paste text here..',
+                              style: GoogleFonts.poppins(
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.6),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => AppRouter.openTranslate(
+                              context,
+                              startVoice: true,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.lavenderLight,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.mic_rounded,
+                                color: AppColors.lavenderDeep,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => _openTranslate(context, voice: true),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.lavenderLight,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.mic_rounded,
-                          color: AppColors.lavenderDeep,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              'Features',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.92,
-              children: [
-                FeatureCard(
-                  title: 'Voice Translator',
-                  description: 'Speak and translate instantly',
-                  icon: Icons.mic_rounded,
-                  color: AppColors.mint,
-                  onTap: () => _openTranslate(context, voice: true),
-                ),
-                FeatureCard(
-                  title: 'Text Translator',
-                  description: 'Type text in any language',
-                  icon: Icons.translate_rounded,
-                  color: AppColors.lavender,
-                  onTap: () => _openTranslate(context),
-                ),
-                FeatureCard(
-                  title: 'Offline Mode',
-                  description: 'Translate without internet',
-                  icon: Icons.cloud_off_rounded,
-                  color: AppColors.softOrange,
-                  onTap: () {
-                    const offline = TranslationMode.offline;
-                    appVm.setTranslationMode(offline);
-                    translateVm.setMode(offline);
-                    _openTranslate(context);
-                  },
-                ),
-                FeatureCard(
-                  title: 'Favorites',
-                  description: 'Your saved translations',
-                  icon: Icons.favorite_rounded,
-                  color: AppColors.softPink,
-                  onTap: () => appVm.setNavIndex(2),
-                ),
-              ],
-            ),
-            if (recent.isNotEmpty) ...[
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+                  ),
+                  const SizedBox(height: 28),
                   Text(
-                    'Recent Translations',
+                    'Features',
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => appVm.setNavIndex(2),
-                    child: Text(
-                      'See all',
-                      style: GoogleFonts.poppins(
-                        color: AppColors.lavenderDeep,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(height: 16),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.92,
+                    children: [
+                      FeatureCard(
+                        title: 'Voice Translator',
+                        description: 'Speak and translate instantly',
+                        icon: Icons.mic_rounded,
+                        color: AppColors.mint,
+                        onTap: () => AppRouter.openTranslate(
+                          context,
+                          startVoice: true,
+                        ),
                       ),
-                    ),
+                      FeatureCard(
+                        title: 'Online mode',
+                        description: 'Type text in any language',
+                        icon: Icons.translate_rounded,
+                        color: AppColors.lavender,
+                        onTap: () =>
+                            AppRouter.openOnlineTranslation(context),
+                      ),
+                      FeatureCard(
+                        title: 'Offline Mode',
+                        description: 'Translate without internet',
+                        icon: Icons.cloud_off_rounded,
+                        color: AppColors.softOrange,
+                        onTap: () =>
+                            AppRouter.openOfflineTranslation(context),
+                      ),
+                      FeatureCard(
+                        title: 'Favorites',
+                        description: 'Your saved translations',
+                        icon: Icons.favorite_rounded,
+                        color: AppColors.softPink,
+                        onTap: () => appVm.setNavIndex(2),
+                      ),
+                    ],
                   ),
+                  if (recent.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Translations',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => appVm.setNavIndex(2),
+                          child: Text(
+                            'See all',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.lavenderDeep,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ...recent.map((r) => _RecentItem(record: r)),
+                  ],
                 ],
               ),
-              const SizedBox(height: 12),
-              ...recent.map((r) => _RecentItem(record: r)),
-            ],
-          ],
-        ),
+            ),
+          ),
+          if (_showRefreshBanner)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _RefreshStatusBanner(
+                  isOnline: appVm.isOnline,
+                  offlineAvailable: appVm.offlineAvailable,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
+}
 
-  void _openTranslate(BuildContext context, {bool voice = false}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TranslateScreen(startVoice: voice),
+class _RefreshStatusBanner extends StatelessWidget {
+  final bool isOnline;
+  final bool offlineAvailable;
+
+  const _RefreshStatusBanner({
+    required this.isOnline,
+    required this.offlineAvailable,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.lavender.withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.lavenderDeep,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Checking connection…',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  isOnline
+                      ? 'Online mode available'
+                      : 'Offline mode${offlineAvailable ? ' ready' : ''}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -214,7 +320,7 @@ class HomeScreen extends StatelessWidget {
 
 class _ModeBadge extends StatelessWidget {
   final bool isOnline;
-  final dynamic mode;
+  final TranslationMode mode;
 
   const _ModeBadge({required this.isOnline, required this.mode});
 

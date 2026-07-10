@@ -21,7 +21,6 @@ class VoskLanguageConfig {
     VoskLanguageConfig(
       langCode: 'en',
       modelZipName: 'vosk-model-small-en-us-0.15.zip',
-      assetPath: 'assets/models/vosk-model-small-en-us-0.15.zip',
     ),
     VoskLanguageConfig(
       langCode: 'de',
